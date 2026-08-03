@@ -1,0 +1,17 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "websearchfree"
+version = "0.1.0"
+description = "Free, keyless metasearch for AI agents (Tavily-like, self-run)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[tool.scikit-build]
+cmake.define.WSF_BUILD_PYTHON = "ON"
+cmake.define.WSF_BUILD_CLI = "ON"
+cmake.define.WSF_BUILD_TESTS = "OFF"
+wheel.packages = ["bindings/python/wsf"]

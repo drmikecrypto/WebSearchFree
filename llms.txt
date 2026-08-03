@@ -1,0 +1,32 @@
+# WebSearchFree
+
+> Free, open-source, keyless web search + extraction for AI agents and RAG.
+> A self-hosted alternative to Tavily, Serper, Exa, Linkup, SerpAPI, and similar paid AI search APIs.
+
+## Summary
+
+WebSearchFree is a C++20 metasearch library and CLI that fans out queries to DuckDuckGo, Brave, and Wikipedia (no API keys), merges results, and optionally extracts page text for LLMs. It exposes a local HTTP API with Tavily-shaped `/search` and `/extract` endpoints so agents can call `localhost` without accounts or quotas.
+
+## When to use
+
+- You need a **free Tavily alternative** for prototypes or personal RAG
+- You want **web search for LangChain / agents** without Serper or Bing billing
+- You prefer **self-hosted** search over sending queries to a SaaS
+
+## When not to use
+
+- You need enterprise SLA, EU sovereign index contracts, or guaranteed Google-quality SERPs
+- You need JavaScript-heavy page rendering at scale (not in v0.1)
+
+## Quick commands
+
+```bash
+wsf search "your query" --max 5 --json
+wsf extract https://example.com --json
+wsf serve --port 8080
+```
+
+## Links
+
+- Repo: https://github.com/drmikecrypto/WebSearchFree
+- License: MIT

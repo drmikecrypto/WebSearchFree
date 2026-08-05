@@ -10,6 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Must be set before any targets so wsf_core and executables share the same CRT.
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 option(WSF_BUILD_CLI "Build wsf CLI" ON)
 option(WSF_BUILD_SERVER "Build optional HTTP server into CLI" ON)
 option(WSF_BUILD_TESTS "Build unit tests" ON)
@@ -70,14 +75,6 @@ else()
   target_compile_definitions(wsf_core PRIVATE WSF_USE_CURL=1)
 endif()
 
-if(MSVC)
-  target_compile_options(wsf_core PRIVATE /W4 /permissive-)
-  # Portable release binaries: static CRT (no vcruntime*.dll next to the exe).
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-else()
-  target_compile_options(wsf_core PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
 # Ship self-contained MinGW executables (avoid libstdc++-6.dll / libgcc_s_seh-1.dll / libwinpthread-1.dll PATH issues).
 function(wsf_static_mingw_runtime target)
   if(MINGW)
@@ -91,6 +88,14 @@ function(wsf_static_msvc_runtime target)
     set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   endif()
 endfunction()
+
+if(MSVC)
+  target_compile_options(wsf_core PRIVATE /W4 /permissive-)
+  target_compile_definitions(wsf_core PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+  target_compile_options(wsf_core PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+wsf_static_msvc_runtime(wsf_core)
 
 if(WSF_BUILD_CLI)
   add_executable(wsf apps/wsf_cli/main.cpp)

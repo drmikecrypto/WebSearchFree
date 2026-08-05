@@ -1,0 +1,15 @@
+{
+  "query": "open source metasearch",
+  "results": [
+    {
+      "title": "SearXNG Sample",
+      "url": "https://example.com/searx?utm_campaign=ads&id=1",
+      "content": "Sample SearXNG result content."
+    },
+    {
+      "title": "Second Hit",
+      "url": "https://docs.example.org/searx",
+      "snippet": "Alt snippet field"
+    }
+  ]
+}

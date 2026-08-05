@@ -38,6 +38,7 @@ _prepare_native_dlls()
 try:
     from wsf_native import search as _native_search
     from wsf_native import extract as _native_extract
+    from wsf_native import extract_one as _native_extract_one
 
     def search(
         query: str,
@@ -45,6 +46,7 @@ try:
         include_raw_content: bool = False,
         engines: list[str] | None = None,
         timeout_ms: int = 8000,
+        searx_url: str = "",
     ) -> dict[str, Any]:
         resp = _native_search(
             query,
@@ -52,11 +54,21 @@ try:
             include_raw_content=include_raw_content,
             engines=engines or ["ddg", "brave", "wikipedia"],
             timeout_ms=timeout_ms,
+            searx_url=searx_url,
         )
         return resp.to_dict()
 
     def extract(url: str, timeout_ms: int = 8000) -> str:
         return _native_extract(url, timeout_ms)
+
+    def extract_one(url: str, timeout_ms: int = 8000) -> dict[str, Any]:
+        r = _native_extract_one(url, timeout_ms)
+        return {
+            "url": r.url,
+            "raw_content": r.raw_content,
+            "status": r.status,
+            "error": r.error or None,
+        }
 
 except ImportError:
 
@@ -66,6 +78,7 @@ except ImportError:
         include_raw_content: bool = False,
         engines: list[str] | None = None,
         timeout_ms: int = 8000,
+        searx_url: str = "",
     ) -> dict[str, Any]:
         wsf = shutil.which("wsf")
         if not wsf:
@@ -87,13 +100,20 @@ except ImportError:
             cmd.append("--raw")
         if engines:
             cmd.extend(["--engines", ",".join(engines)])
+        if searx_url:
+            cmd.extend(["--searx-url", searx_url])
         out = subprocess.check_output(cmd, text=True)
         return json.loads(out)
 
     def extract(url: str, timeout_ms: int = 8000) -> str:
-        del timeout_ms  # CLI uses default timeout
+        return extract_one(url, timeout_ms).get("raw_content", "")
+
+    def extract_one(url: str, timeout_ms: int = 8000) -> dict[str, Any]:
         wsf = shutil.which("wsf")
         if not wsf:
             raise RuntimeError("wsf CLI not found on PATH")
-        out = subprocess.check_output([wsf, "extract", url, "--json"], text=True)
-        return json.loads(out).get("raw_content", "")
+        out = subprocess.check_output(
+            [wsf, "extract", url, "--json", "--timeout", str(timeout_ms)],
+            text=True,
+        )
+        return json.loads(out)

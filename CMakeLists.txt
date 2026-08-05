@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(WebSearchFree VERSION 0.1.0 LANGUAGES CXX)
+project(WebSearchFree VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +39,8 @@ add_library(wsf_core
   src/engines/ddg.cpp
   src/engines/brave.cpp
   src/engines/wikipedia.cpp
+  src/engines/searx.cpp
+  src/engines/factory.cpp
 )
 
 add_library(wsf::core ALIAS wsf_core)
@@ -89,6 +91,8 @@ if(WSF_BUILD_TESTS)
     tests/test_html_utils.cpp
     tests/test_rank.cpp
     tests/test_extract.cpp
+    tests/test_brave.cpp
+    tests/test_searx.cpp
   )
   target_link_libraries(wsf_tests PRIVATE wsf::core)
   target_compile_definitions(wsf_tests PRIVATE

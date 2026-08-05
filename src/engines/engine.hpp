@@ -11,15 +11,24 @@ namespace wsf::detail {
 
 struct EngineContext {
   int timeout_ms = 8000;
+  std::string searx_url;
+};
+
+struct EngineOutcome {
+  std::vector<SerpHit> hits;
+  std::string error;
 };
 
 class SearchEngine {
  public:
   virtual ~SearchEngine() = default;
   virtual std::string name() const = 0;
-  virtual std::vector<SerpHit> search(std::string_view query, const EngineContext& ctx) = 0;
+  virtual EngineOutcome search(std::string_view query, const EngineContext& ctx) = 0;
 };
 
 std::unique_ptr<SearchEngine> make_engine(std::string_view name);
+
+/// Known built-in engine names (excluding aliases).
+std::vector<std::string> known_engine_names();
 
 }  // namespace wsf::detail

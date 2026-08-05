@@ -5,9 +5,10 @@
 #
 # Then:
 #   curl -s http://127.0.0.1:8080/health
-#   curl -s -X POST http://127.0.0.1:8080/search ^
-#     -H "Content-Type: application/json" ^
-#     -d "{\"query\":\"open source metasearch\",\"max_results\":5}"
-#   curl -s -X POST http://127.0.0.1:8080/extract ^
-#     -H "Content-Type: application/json" ^
-#     -d "{\"url\":\"https://example.com\"}"
+#   curl -s http://127.0.0.1:8080/openapi.json
+#   curl -s -X POST http://127.0.0.1:8080/search \
+#     -H "Content-Type: application/json" \
+#     -d '{"query":"open source metasearch","max_results":5}'
+#   curl -s -X POST http://127.0.0.1:8080/extract \
+#     -H "Content-Type: application/json" \
+#     -d '{"urls":["https://example.com","https://example.org"]}'

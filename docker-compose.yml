@@ -1,0 +1,10 @@
+services:
+  wsf:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Optional: point at your SearXNG instance for higher-quality results
+      # WSF_SEARX_URL: http://host.docker.internal:8888
+      WSF_SEARX_URL: ${WSF_SEARX_URL:-}
+    restart: unless-stopped

@@ -25,36 +25,17 @@ static std::string read_file(const std::string& path) {
   return ss.str();
 }
 
-void test_extract() {
-  auto html = read_file(std::string(WSF_FIXTURES_DIR) + "/article_sample.html");
-  auto text = wsf::detail::extract_main_content(html);
-  CHECK(text.find("main article content") != std::string::npos);
-  CHECK(text.find("var x") == std::string::npos);
+void test_brave_parse() {
+  auto html = read_file(std::string(WSF_FIXTURES_DIR) + "/brave_sample.html");
+  auto hits = wsf::detail::parse_brave_html(html);
+  CHECK(hits.size() >= 2);
+  CHECK(hits[0].title.find("Brave Sample") != std::string::npos);
+  CHECK(hits[0].url.find("example.com/brave-result") != std::string::npos);
+  CHECK(hits[0].url.find("utm_source") == std::string::npos);
+  CHECK(hits[0].engine == "brave");
 }
 
-int test_extract_main() {
-  test_extract();
+int test_brave_main() {
+  test_brave_parse();
   return g_failed;
-}
-
-// Single test binary entry
-int main() {
-  extern int test_ddg_main();
-  extern int test_html_utils_main();
-  extern int test_rank_main();
-  extern int test_brave_main();
-  extern int test_searx_main();
-  int failed = 0;
-  failed += test_ddg_main();
-  failed += test_html_utils_main();
-  failed += test_rank_main();
-  failed += test_extract_main();
-  failed += test_brave_main();
-  failed += test_searx_main();
-  if (failed == 0) {
-    std::cout << "All tests passed\n";
-    return 0;
-  }
-  std::cerr << failed << " assertion(s) failed\n";
-  return 1;
 }

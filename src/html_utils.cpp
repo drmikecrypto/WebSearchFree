@@ -1,5 +1,7 @@
 #include "html_utils.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <sstream>
@@ -181,6 +183,50 @@ std::string collapse_whitespace(std::string_view input) {
   return out;
 }
 
+namespace {
+
+bool is_tracking_param(std::string_view key) {
+  static const char* kTracking[] = {
+      "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+      "fbclid",     "gclid",      "gbraid",      "wbraid",   "mc_cid",     "mc_eid",
+      "msclkid",    "yclid",      "_ga",         "ref",
+  };
+  std::string lower(key);
+  for (char& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (const char* t : kTracking) {
+    if (lower == t) return true;
+  }
+  return false;
+}
+
+std::string strip_tracking_params(std::string u) {
+  auto q = u.find('?');
+  if (q == std::string::npos) return u;
+  std::string base = u.substr(0, q);
+  std::string query = u.substr(q + 1);
+  std::string kept;
+  size_t start = 0;
+  while (start < query.size()) {
+    size_t amp = query.find('&', start);
+    std::string pair =
+        amp == std::string::npos ? query.substr(start) : query.substr(start, amp - start);
+    if (!pair.empty()) {
+      auto eq = pair.find('=');
+      std::string key = eq == std::string::npos ? pair : pair.substr(0, eq);
+      if (!is_tracking_param(key)) {
+        if (!kept.empty()) kept.push_back('&');
+        kept += pair;
+      }
+    }
+    if (amp == std::string::npos) break;
+    start = amp + 1;
+  }
+  if (kept.empty()) return base;
+  return base + "?" + kept;
+}
+
+}  // namespace
+
 std::string normalize_url(std::string_view url) {
   std::string u(url);
   u = html_unescape(u);
@@ -197,8 +243,7 @@ std::string normalize_url(std::string_view url) {
     // strip trailing slash on bare host
     if (host_end != std::string::npos && host_end == u.size() - 1) u.pop_back();
   }
-  // strip common tracking params lightly by leaving path as-is for now
-  return u;
+  return strip_tracking_params(std::move(u));
 }
 
 std::string url_encode(std::string_view value) {
@@ -419,6 +464,27 @@ std::vector<SerpHit> parse_brave_html(std::string_view html) {
       hits.push_back(std::move(hit));
     }
     pos = a_close + 4;
+  }
+  return hits;
+}
+
+std::vector<SerpHit> parse_searx_json(std::string_view json_body) {
+  std::vector<SerpHit> hits;
+  try {
+    auto j = nlohmann::json::parse(json_body);
+    if (!j.contains("results") || !j["results"].is_array()) return hits;
+    int rank = 0;
+    for (const auto& item : j["results"]) {
+      SerpHit hit;
+      hit.title = item.value("title", "");
+      hit.url = normalize_url(item.value("url", ""));
+      hit.snippet = item.value("content", item.value("snippet", ""));
+      hit.rank = rank++;
+      hit.engine = "searx";
+      if (!hit.url.empty() && !hit.title.empty()) hits.push_back(std::move(hit));
+    }
+  } catch (...) {
+    return {};
   }
   return hits;
 }

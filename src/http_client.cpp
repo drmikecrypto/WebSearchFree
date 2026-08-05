@@ -1,6 +1,8 @@
 #include "http_client.hpp"
 
+#include <chrono>
 #include <stdexcept>
+#include <thread>
 
 #if defined(WSF_USE_WINHTTP)
 #  ifndef NOMINMAX
@@ -41,15 +43,16 @@ std::string wide_to_utf8(std::wstring_view s) {
 #endif
 }
 
-}  // namespace
-
-std::string default_user_agent() {
-  return "WebSearchFree/0.1 (+https://github.com/websearchfree/websearchfree; research)";
+bool should_retry(const HttpResponse& resp) {
+  if (!resp.error.empty()) return true;
+  if (resp.status == 429) return true;
+  if (resp.status >= 500 && resp.status <= 599) return true;
+  return false;
 }
 
 #if defined(WSF_USE_WINHTTP)
 
-HttpResponse http_request(const HttpRequest& req) {
+HttpResponse http_request_once(const HttpRequest& req) {
   HttpResponse out;
   URL_COMPONENTS parts{};
   parts.dwStructSize = sizeof(parts);
@@ -81,6 +84,11 @@ HttpResponse http_request(const HttpRequest& req) {
 
   DWORD timeout = static_cast<DWORD>(req.timeout_ms);
   WinHttpSetTimeouts(session, timeout, timeout, timeout, timeout);
+
+  // Follow redirects (parity with libcurl CURLOPT_FOLLOWLOCATION).
+  DWORD redirect_policy = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
+  WinHttpSetOption(session, WINHTTP_OPTION_REDIRECT_POLICY, &redirect_policy,
+                   sizeof(redirect_policy));
 
   INTERNET_PORT port = parts.nPort;
   HINTERNET connect = WinHttpConnect(session, host.c_str(), port, 0);
@@ -135,7 +143,6 @@ HttpResponse http_request(const HttpRequest& req) {
   if (buf_len > 0) {
     std::wstring final_w(buf_len / sizeof(wchar_t), L'\0');
     if (WinHttpQueryOption(request, WINHTTP_OPTION_URL, final_w.data(), &buf_len)) {
-      // buf_len includes null terminator bytes
       size_t chars = buf_len / sizeof(wchar_t);
       if (chars > 0 && final_w[chars - 1] == L'\0') --chars;
       final_w.resize(chars);
@@ -163,15 +170,13 @@ HttpResponse http_request(const HttpRequest& req) {
 
 #elif defined(WSF_USE_CURL)
 
-namespace {
 size_t write_cb(char* ptr, size_t size, size_t nmemb, void* userdata) {
   auto* out = static_cast<std::string*>(userdata);
   out->append(ptr, size * nmemb);
   return size * nmemb;
 }
-}  // namespace
 
-HttpResponse http_request(const HttpRequest& req) {
+HttpResponse http_request_once(const HttpRequest& req) {
   HttpResponse out;
   CURL* curl = curl_easy_init();
   if (!curl) {
@@ -223,5 +228,20 @@ HttpResponse http_request(const HttpRequest& req) {
 #else
 #  error "No HTTP backend configured"
 #endif
+
+}  // namespace
+
+std::string default_user_agent() {
+  return "WebSearchFree/0.2 (+https://github.com/drmikecrypto/WebSearchFree; research)";
+}
+
+HttpResponse http_request(const HttpRequest& req) {
+  HttpResponse out = http_request_once(req);
+  if (should_retry(out)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    out = http_request_once(req);
+  }
+  return out;
+}
 
 }  // namespace wsf::detail

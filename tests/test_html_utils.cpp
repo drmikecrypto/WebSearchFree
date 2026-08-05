@@ -17,6 +17,8 @@ void test_html_utils() {
   CHECK(wsf::detail::url_encode("a b") == "a+b");
   CHECK(wsf::detail::normalize_url("HTTPS://Example.COM/Path#frag") ==
         "https://example.com/Path");
+  CHECK(wsf::detail::normalize_url("https://example.com/x?utm_source=a&id=1&fbclid=zz") ==
+        "https://example.com/x?id=1");
   auto text = wsf::detail::collapse_whitespace(wsf::detail::strip_tags("<p>Hi <b>there</b></p>"));
   CHECK(text.find("Hi") != std::string::npos);
   CHECK(text.find("there") != std::string::npos);

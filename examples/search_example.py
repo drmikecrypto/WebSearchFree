@@ -19,6 +19,8 @@ def main() -> int:
         [wsf, "search", query, "--max", "5", "--json"], text=True
     )
     data = json.loads(raw)
+    for w in data.get("warnings") or []:
+        print(f"warning: {w}", file=sys.stderr)
     for i, r in enumerate(data.get("results", []), 1):
         print(f"{i}. {r['title']}\n   {r['url']}\n   {r.get('content', '')[:160]}\n")
     return 0

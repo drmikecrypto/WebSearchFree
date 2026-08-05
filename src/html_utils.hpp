@@ -31,4 +31,7 @@ std::vector<SerpHit> parse_ddg_html(std::string_view html);
 /// Parse Brave Search HTML SERP.
 std::vector<SerpHit> parse_brave_html(std::string_view html);
 
+/// Parse SearXNG JSON search response (`format=json`).
+std::vector<SerpHit> parse_searx_json(std::string_view json_body);
+
 }  // namespace wsf::detail

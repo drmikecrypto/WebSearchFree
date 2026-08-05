@@ -91,6 +91,9 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          # Avoid uploading buildx/provenance artifacts that break release download.
+          provenance: false
+          sbom: false
 
   release:
     needs: [build-linux, build-windows]
@@ -100,6 +103,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          # Only binary packages — ignore docker buildx cache artifacts.
+          pattern: wsf-*
+          merge-multiple: false
       - name: Flatten artifacts
         run: |
           mkdir -p out
@@ -110,6 +116,7 @@ jobs:
         with:
           files: out/*
           generate_release_notes: true
+          fail_on_unmatched_files: true
           body: |
             ## Plug and play
 

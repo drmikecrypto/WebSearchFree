@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create or reuse (e.g. v0.2.1)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ libcurl4-openssl-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWSF_BUILD_TESTS=ON -DWSF_BUILD_PYTHON=OFF
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp build/wsf dist/wsf
+          chmod +x dist/wsf
+          tar -C dist -czf wsf-linux-amd64.tar.gz wsf
+          sha256sum wsf-linux-amd64.tar.gz > wsf-linux-amd64.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wsf-linux-amd64
+          path: |
+            wsf-linux-amd64.tar.gz
+            wsf-linux-amd64.tar.gz.sha256
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (MSVC static CRT)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWSF_BUILD_TESTS=ON -DWSF_BUILD_PYTHON=OFF
+      - name: Build
+        run: cmake --build build --config Release -j
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item build/Release/wsf.exe wsf-windows-amd64.exe
+          Get-FileHash wsf-windows-amd64.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  wsf-windows-amd64.exe" } |
+            Set-Content -Encoding ascii wsf-windows-amd64.exe.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wsf-windows-amd64
+          path: |
+            wsf-windows-amd64.exe
+            wsf-windows-amd64.exe.sha256
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags
+        id: meta
+        shell: bash
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tags=${IMAGE}:${GITHUB_REF_NAME},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${IMAGE}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten artifacts
+        run: |
+          mkdir -p out
+          cp artifacts/wsf-linux-amd64/* out/
+          cp artifacts/wsf-windows-amd64/* out/
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
+          body: |
+            ## Plug and play
+
+            ### Windows
+            Download `wsf-windows-amd64.exe`, then:
+            ```powershell
+            .\wsf-windows-amd64.exe serve --port 8080
+            ```
+
+            Or install:
+            ```powershell
+            irm https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.ps1 | iex
+            ```
+
+            ### Linux
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.sh | bash
+            wsf serve --port 8080
+            ```
+
+            ### Docker
+            ```bash
+            docker run --rm -p 8080:8080 ghcr.io/drmikecrypto/websearchfree:latest
+            ```
+
+            Open http://127.0.0.1:8080 — no API key required.

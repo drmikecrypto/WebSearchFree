@@ -31,7 +31,7 @@ from typing import Any
 BASE_URL = os.environ.get("WSF_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "websearchfree"
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.2.1"
 
 
 def _http_json(method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:

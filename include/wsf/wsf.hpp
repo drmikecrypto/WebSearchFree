@@ -9,7 +9,7 @@
 
 namespace wsf {
 
-inline constexpr const char* kVersion = "0.2.0";
+inline constexpr const char* kVersion = "0.2.1";
 
 struct Options {
   int max_results = 5;

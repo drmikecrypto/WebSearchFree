@@ -62,14 +62,14 @@ flowchart TB
 | API key / monthly credits | Required | **None** |
 | Data leaves your machine for the vendor | Usually yes | **No vendor cloud** — you run the binary |
 
-## Features (v0.2)
+## Features (v0.2.1)
 
+- **Plug and play**: Docker / GHCR, one-line install scripts, GitHub Release binaries
 - **Metasearch** across DuckDuckGo HTML, Brave Search HTML, Wikipedia, and optional SearXNG
 - **Honest status**: per-engine `ok` / `error`, `warnings`, real `response_time`
 - **Multi-URL extract** with structured per-URL status (`ok`, `robots_denied`, `fetch_failed`, `empty`)
 - **Embedded UI** + **OpenAPI** + CORS on `wsf serve`
-- **MCP server** and **LangChain tools** under `integrations/`
-- **Docker Compose** one-liner
+- **Drop-in clients**: HTTP Python client, MCP, LangChain, OpenAI tool schema
 - **C++20 library** + **CLI** + **Python** helper
 - MIT licensed
 
@@ -79,9 +79,56 @@ flowchart TB
 - No JavaScript page rendering
 - Result quality depends on upstream HTML/APIs
 
-## Quick start
+## Plug and play (no C++ build required)
 
-### Docker (fastest)
+Pick one path. Every path exposes the same local API at `http://127.0.0.1:8080`.
+
+| Path | Command |
+|------|---------|
+| **Docker (any OS)** | `docker run --rm -p 8080:8080 ghcr.io/drmikecrypto/websearchfree:latest` |
+| **Compose (this repo)** | `docker compose up --build` |
+| **Windows one-liner** | `irm https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.ps1 \| iex` |
+| **Linux one-liner** | `curl -fsSL https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.sh \| bash` |
+
+Then open [http://127.0.0.1:8080](http://127.0.0.1:8080) or call the API:
+
+```bash
+curl -s -X POST http://127.0.0.1:8080/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"open source metasearch","max_results":5}'
+```
+
+Release binaries are self-contained (static MSVC CRT on Windows; no MinGW DLL hell). Tag `v*` to publish via GitHub Actions → Releases + GHCR.
+
+### Drop into another project
+
+1. Run WebSearchFree (Docker/binary above).
+2. Copy one client:
+
+| Your stack | Drop-in |
+|------------|---------|
+| Any language / HTTP | `POST /search`, `POST /extract` — see `/openapi.json` |
+| Python (stdlib) | copy [`integrations/http/client.py`](integrations/http/client.py) |
+| OpenAI tool calling | [`examples/openai_tools.json`](examples/openai_tools.json) + [`examples/drop_in_agent.py`](examples/drop_in_agent.py) |
+| LangChain | [`integrations/langchain/wsf_tool.py`](integrations/langchain/wsf_tool.py) |
+| Cursor / Claude MCP | [`integrations/mcp/server.py`](integrations/mcp/server.py) |
+
+```python
+# anywhere — stdlib only
+import sys
+sys.path.insert(0, "path/to/WebSearchFree/integrations/http")
+from client import WebSearchFree
+
+wsf = WebSearchFree()  # or WebSearchFree("http://127.0.0.1:8080")
+print(wsf.search("open source metasearch", max_results=5))
+print(wsf.extract(["https://example.com"]))
+```
+
+Set `WSF_BASE_URL` if the server is not on localhost:8080. Optional `.env` keys: see [`.env.example`](.env.example).
+
+## Quick start (build from source)
+
+### Docker (local build)
 
 ```bash
 docker compose up --build
@@ -97,7 +144,7 @@ cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
 
-Binary: `build/wsf.exe` (or `build/wsf`).
+Binary: `build/wsf.exe` (or `build/wsf`). MinGW builds link `-static`; MSVC builds use static CRT — you should not need extra compiler DLLs next to the exe.
 
 ### Search (no keys)
 
@@ -269,15 +316,17 @@ No.
 ## Project layout
 
 ```
-include/wsf/          Public C++ API
-src/                  Core: HTTP, engines, extract, rank
-apps/wsf_cli/         CLI + HTTP server + embedded UI
-bindings/python/      pybind11 module + CLI wrapper
-integrations/mcp/     Stdio MCP server
-integrations/langchain/ LangChain tools
-tests/                Fixture-based unit tests (no live network in CI)
-examples/             Usage snippets
-Dockerfile            Production image
+include/wsf/              Public C++ API
+src/                      Core: HTTP, engines, extract, rank
+apps/wsf_cli/             CLI + HTTP server + embedded UI
+bindings/python/          pybind11 module + CLI wrapper
+integrations/http/        Stdlib Python HTTP client (drop-in)
+integrations/mcp/         Stdio MCP server
+integrations/langchain/   LangChain tools
+scripts/install.*         One-line binary installers
+examples/                 curl, OpenAI tools, drop-in agent
+Dockerfile / compose      Production image + healthcheck
+.github/workflows/        CI + Release (binaries + GHCR)
 ```
 
 ## Keywords

@@ -1,7 +1,7 @@
 # Drop-in style calls against local WebSearchFree server (Tavily-shaped).
 #
-#   cmake --build build
-#   ./build/wsf serve --port 8080
+# Fastest: docker run --rm -p 8080:8080 ghcr.io/drmikecrypto/websearchfree:latest
+# Or:      wsf serve --port 8080
 #
 # Then:
 #   curl -s http://127.0.0.1:8080/health

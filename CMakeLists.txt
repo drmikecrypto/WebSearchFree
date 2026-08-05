@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
-project(WebSearchFree VERSION 0.2.0 LANGUAGES CXX)
+# Honor MSVC_RUNTIME_LIBRARY /MT for portable Windows binaries.
+if(POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif()
+project(WebSearchFree VERSION 0.2.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,9 +72,25 @@ endif()
 
 if(MSVC)
   target_compile_options(wsf_core PRIVATE /W4 /permissive-)
+  # Portable release binaries: static CRT (no vcruntime*.dll next to the exe).
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
   target_compile_options(wsf_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# Ship self-contained MinGW executables (avoid libstdc++-6.dll / libgcc_s_seh-1.dll / libwinpthread-1.dll PATH issues).
+function(wsf_static_mingw_runtime target)
+  if(MINGW)
+    # Prefer full -static so the g++ driver does not re-add a dynamic -lpthread at the end.
+    target_link_options(${target} PRIVATE -static)
+  endif()
+endfunction()
+
+function(wsf_static_msvc_runtime target)
+  if(MSVC)
+    set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
+endfunction()
 
 if(WSF_BUILD_CLI)
   add_executable(wsf apps/wsf_cli/main.cpp)
@@ -82,6 +102,8 @@ if(WSF_BUILD_CLI)
   if(WIN32)
     target_link_libraries(wsf PRIVATE ws2_32)
   endif()
+  wsf_static_mingw_runtime(wsf)
+  wsf_static_msvc_runtime(wsf)
 endif()
 
 if(WSF_BUILD_TESTS)
@@ -98,6 +120,8 @@ if(WSF_BUILD_TESTS)
   target_compile_definitions(wsf_tests PRIVATE
     WSF_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
   )
+  wsf_static_mingw_runtime(wsf_tests)
+  wsf_static_msvc_runtime(wsf_tests)
   add_test(NAME wsf_tests COMMAND wsf_tests)
 endif()
 

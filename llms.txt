@@ -1,11 +1,21 @@
 # WebSearchFree
 
-> Free, open-source, keyless web search + extraction for AI agents and RAG (v0.2).
+> Free, open-source, keyless web search + extraction for AI agents and RAG (v0.2.1).
 > A self-hosted alternative to Tavily, Serper, Exa, Linkup, SerpAPI, and similar paid AI search APIs.
 
 ## Summary
 
 WebSearchFree is a C++20 metasearch library and CLI that fans out queries to DuckDuckGo, Brave, Wikipedia, and optionally SearXNG (no API keys), merges results, and extracts page text for LLMs. It exposes a local HTTP API with Tavily-shaped `/search` and `/extract` endpoints, an embedded UI, OpenAPI, plus MCP and LangChain helpers.
+
+## Plug and play (preferred)
+
+```bash
+docker run --rm -p 8080:8080 ghcr.io/drmikecrypto/websearchfree:latest
+# Windows: irm https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.ps1 | iex
+# Linux:   curl -fsSL https://raw.githubusercontent.com/drmikecrypto/WebSearchFree/main/scripts/install.sh | bash
+```
+
+Point agents at `http://127.0.0.1:8080`. Drop-in Python client: `integrations/http/client.py`.
 
 ## When to use
 
@@ -22,10 +32,6 @@ WebSearchFree is a C++20 metasearch library and CLI that fans out queries to Duc
 ## Quick commands
 
 ```bash
-# Docker
-docker compose up --build
-# open http://127.0.0.1:8080
-
 wsf search "your query" --max 5 --json
 wsf extract https://example.com --json
 wsf serve --port 8080
@@ -33,7 +39,7 @@ wsf serve --port 8080
 
 ## MCP (Cursor / Claude)
 
-1. Run `wsf serve --port 8080`
+1. Run `wsf serve --port 8080` (or Docker)
 2. Point MCP at `integrations/mcp/server.py` with `WSF_BASE_URL=http://127.0.0.1:8080`
 
 Tools: `web_search`, `web_extract`.
@@ -42,4 +48,4 @@ Tools: `web_search`, `web_extract`.
 
 - Repo: https://github.com/drmikecrypto/WebSearchFree
 - License: MIT
-- Version: 0.2.0
+- Version: 0.2.1
